@@ -32,7 +32,21 @@ namespace RosettaUI
 
         protected override void SetInternal(T t)
         {
+            var prevValue = getter.Get();
             _setter?.Invoke(t);
+            onValueChanged?.Invoke(prevValue, t);
+        }
+
+        public event Action<T, T> onValueChanged;
+
+        public override void SubscribeValueChange(Action<Action<object>, object, object> func)
+        {
+            if (_setter.Target is IBinder) return; // ignore nesting binders
+            Action<object> setObject = obj => _setter((T) obj);
+            onValueChanged += (prevVal, currVal) =>
+            {
+                if (!Equals(prevVal, currVal)) func(setObject, prevVal, currVal);
+            };
         }
     }
 }

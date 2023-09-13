@@ -1,4 +1,6 @@
-﻿namespace RosettaUI
+﻿using System;
+
+namespace RosettaUI
 {
     public interface IBinder : IGetter
     {
@@ -6,6 +8,8 @@
 
         object GetObject();
         void SetObject(object obj);
+
+        void SubscribeValueChange(Action<Action<object>, object, object> onValueChange);
     }
 
     public interface IBinder<T> : IBinder, IGetter<T>

@@ -1,4 +1,6 @@
-﻿namespace RosettaUI
+﻿using System;
+
+namespace RosettaUI
 {
     /// <summary>
     /// Binder, which targets a portion of the parents
@@ -25,8 +27,26 @@
         protected override void SetInternal(TValue value)
         {
             var parent = parentBinder.Get();
+            var prevValue = GetFromParent(parent);
             parent = SetToParent(parent, value);
             parentBinder.Set(parent);
+            onValueChanged?.Invoke(prevValue, value);
+        }
+
+        public event Action<TValue, TValue> onValueChanged;
+
+        public override void SubscribeValueChange(Action<Action<object>, object, object> func)
+        {
+            Action<object> setObject = obj =>
+            {
+                var parent = parentBinder.Get();
+                parent = SetToParent(parent, (TValue) obj);
+                parentBinder.Set(parent);
+            };
+            onValueChanged += (prevVal, currVal) =>
+            {
+                if (!Equals(prevVal, currVal)) func(setObject, prevVal, currVal);
+            };
         }
     }
 }

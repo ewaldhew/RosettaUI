@@ -22,6 +22,8 @@ namespace RosettaUI
 
         protected abstract void SetInternal(T t);
 
+        public virtual void SubscribeValueChange(Action<Action<object>, object, object> onValueChange) { }
+
 
         #region IGetter<T>
 

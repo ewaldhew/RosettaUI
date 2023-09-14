@@ -22,22 +22,23 @@ namespace RosettaUI.Example
             typeof(ArgumentExample),
             typeof(MethodExample),
             typeof(CustomExample),
-            typeof(SafetyExample)
+            typeof(SafetyExample),
+            typeof(HistoryExample)
         };
-        
+
 #if ENABLE_INPUT_SYSTEM
         public Key toggleUIKey = Key.U;
 #else
         public KeyCode toggleUIKey = KeyCode.U;
 #endif
         private RosettaUIRoot _root;
-        
+
         private void Start()
         {
             _root = GetComponent<RosettaUIRoot>();
             _root.Build(CreateElement());
         }
-        
+
         private static Element CreateElement()
         {
             return UI.Window(

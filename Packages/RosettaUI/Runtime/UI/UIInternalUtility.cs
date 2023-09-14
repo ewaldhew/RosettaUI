@@ -13,7 +13,7 @@ namespace RosettaUI
                 null
             );
         }
-        
+
         public static IBinder<T> CreateBinder<T>(Expression<Func<T>> targetExpression)
         {
             return ExpressionUtility.CreateBinder(targetExpression);
@@ -33,6 +33,13 @@ namespace RosettaUI
         public static void SetInteractableWithBinder(Element element, IBinder binder)
         {
             element.Interactable = !binder.IsReadOnly;
+        }
+
+        public static void RegisterHistoryRecorder(Element element, IBinder binder)
+        {
+            if (!element.Interactable || binder.IsReadOnly) return;
+
+            binder.SubscribeValueChange(UIHistory.GetHistoryRecorder<object>());
         }
     }
 }

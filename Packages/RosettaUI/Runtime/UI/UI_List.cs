@@ -53,7 +53,7 @@ namespace RosettaUI
 
 
         #region readValue/writeValue
-        
+
         public static Element List<TList>(
             Expression<Func<TList>> targetExpression,
             Action<TList> writeValue,
@@ -61,7 +61,7 @@ namespace RosettaUI
         )
             where TList : IList
             => List(targetExpression, writeValue, null, option);
-        
+
         public static Element List<TList>(
             LabelElement label,
             Func<TList> readValue,
@@ -81,9 +81,9 @@ namespace RosettaUI
         {
             return List(
                 ExpressionUtility.CreateLabelString(targetExpression),
-                targetExpression.Compile(), 
+                targetExpression.Compile(),
                 writeValue,
-                createItemElement, 
+                createItemElement,
                 option ?? CalcDefaultOptionOf(targetExpression));
         }
 
@@ -101,7 +101,7 @@ namespace RosettaUI
 
 
         #region ReadOnly
-        
+
         public static Element ListReadOnly<TList>(
             Expression<Func<TList>> targetExpression,
             in ListViewOption option
@@ -119,7 +119,7 @@ namespace RosettaUI
             return List(
                 ExpressionUtility.CreateLabelString(targetExpression),
                 UIInternalUtility.CreateReadOnlyBinder(targetExpression),
-                createItemElement, 
+                createItemElement,
                 option ?? CalcDefaultOptionOf(targetExpression));
         }
 
@@ -130,10 +130,10 @@ namespace RosettaUI
         )
             where TList : IList
             => ListReadOnly(label, readValue, null, option);
-        
+
         public static Element ListReadOnly<TList>(
-            LabelElement label, 
-            Func<TList> readValue, 
+            LabelElement label,
+            Func<TList> readValue,
             Func<IBinder, int, Element> createItemElement = null,
             in ListViewOption? option = null
         )
@@ -142,7 +142,7 @@ namespace RosettaUI
             var binder = Binder.Create(readValue, null);
             return List(label, binder, createItemElement, option);
         }
-        
+
         #endregion
 
 
@@ -154,7 +154,7 @@ namespace RosettaUI
 
             var listItemContainer = ListItemContainer(listBinder, createItemElement, option);
             var ret = listItemContainer;
-            
+
             if (option.header)
             {
                 var countField = ListCounterField(listBinder, listItemContainer, option);
@@ -169,6 +169,7 @@ namespace RosettaUI
             }
 
             UIInternalUtility.SetInteractableWithBinder(ret, listBinder);
+            UIInternalUtility.RegisterHistoryRecorder(ret, listBinder);
 
             return ret;
         }
@@ -176,7 +177,7 @@ namespace RosettaUI
         public static Element ListCounterField(IBinder listBinder,　Element itemContainerElement, in ListViewOption option)
         {
             var interactable = !ListBinder.IsReadOnly(listBinder) && !option.fixedSize;
-            
+
             return Field(null,
                 () => ListBinder.GetCount(listBinder),
                 count =>
@@ -192,9 +193,11 @@ namespace RosettaUI
                     {
                         ListBinder.SetCount(listBinder, count);
                     }
-                }).SetMinWidth(50f).SetInteractable(interactable);
+                },
+                new FieldOption { disableHistory = true }
+                ).SetMinWidth(50f).SetInteractable(interactable);
         }
-        
+
         private static Element ListItemContainer(IBinder listBinder, Func<IBinder, int, Element> createItemElement, in ListViewOption option)
         {
             var optionCaptured = option;
@@ -205,7 +208,7 @@ namespace RosettaUI
                     optionCaptured)
             );
         }
-        
+
         public static Element ListItemDefault(IBinder binder, int index) => Field($"Item {index}", binder);
 
         private static ListViewOption? CalcDefaultOptionOf(LambdaExpression expression)

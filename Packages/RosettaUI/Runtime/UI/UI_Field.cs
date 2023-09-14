@@ -18,7 +18,7 @@ namespace RosettaUI
 
         public static Element Field<T>(Expression<Func<T>> targetExpression, Action<T> writeValue, in FieldOption? option = null)
             => Field(ExpressionUtility.CreateLabelString(targetExpression), targetExpression.Compile(), writeValue, option);
-        
+
         public static Element Field<T>(LabelElement label, Func<T> readValue, Action<T> writeValue, in FieldOption? option = null)
             => Field(label, Binder.Create(readValue, writeValue), option);
 
@@ -26,6 +26,7 @@ namespace RosettaUI
         {
             var element = BinderToElement.CreateFieldElement(label, binder, option ?? FieldOption.Default);
             if (element != null) UIInternalUtility.SetInteractableWithBinder(element, binder);
+            if (element != null && option?.disableHistory != true) UIInternalUtility.RegisterHistoryRecorder(element, binder);
 
             return element;
         }

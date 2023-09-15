@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -19,28 +20,60 @@ namespace RosettaUI
         public static void Undo() => _globalHistory.Undo();
         public static void Redo() => _globalHistory.Redo();
 
-        public static Action<Action<T>, T, T> GetHistoryRecorder<T>()
+        public static IHistoryListener<T> GetHistoryRecorder<T>() => new HistoryRecorder<T>();
+
+        public interface IHistoryListener<T>
         {
-            T firstBefore = default;
-            bool hasFirst = false;
-            var pushDebounced = Debounce(
-                delegate(Action<T> setState, T beforeState, T afterState)
-                {
-                    hasFirst = false;
-                    if (beforeState.Equals(afterState)) return;
-                    _globalHistory?.PushRecord(setState, beforeState, afterState);
-                }, _recordDelayMs);
+            bool Enabled { set; }
+            Action<T, T> GetListener(Action<T> setter);
+        }
 
-            return delegate(Action<T> setState, T beforeState, T afterState)
+        private class HistoryRecorder<T> : IHistoryListener<T>
+        {
+            private bool _enabled = true;
+            private Dictionary<Action<T>, Action<T, T>> _listenerCache;
+
+            public Action<T, T> GetListener(Action<T> setter)
             {
-                if (!hasFirst)
-                {
-                    firstBefore = beforeState;
-                    hasFirst = true;
-                }
+                if (_listenerCache.TryGetValue(setter, out var listener)) return listener;
 
-                pushDebounced(setState, firstBefore, afterState);
-            };
+                T firstBefore = default;
+                bool hasFirst = false;
+                Action<T> setStateSilenced = value =>
+                {
+                    _enabled = false;
+                    setter(value);
+                    _enabled = true;
+                };
+                var pushDebounced = Debounce(
+                    delegate(Action<T> setState, T beforeState, T afterState)
+                    {
+                        hasFirst = false;
+                        if (beforeState.Equals(afterState)) return;
+                        _globalHistory?.PushRecord(setState, beforeState, afterState);
+                    }, _recordDelayMs);
+
+                listener = delegate(T beforeState, T afterState)
+                {
+                    if (!_enabled) return;
+
+                    if (!hasFirst)
+                    {
+                        firstBefore = beforeState;
+                        hasFirst = true;
+                    }
+
+                    pushDebounced(setStateSilenced, firstBefore, afterState);
+                };
+
+                _listenerCache[setter] = listener;
+                return listener;
+            }
+
+            bool IHistoryListener<T>.Enabled
+            {
+                set => _enabled = value;
+            }
         }
 
         /// <summary>

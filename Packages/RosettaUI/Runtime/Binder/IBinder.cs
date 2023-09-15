@@ -9,7 +9,7 @@ namespace RosettaUI
         object GetObject();
         void SetObject(object obj);
 
-        void SubscribeValueChange(Action<Action<object>, object, object> onValueChange);
+        event Action<object, object> onValueChanged;
     }
 
     public interface IBinder<T> : IBinder, IGetter<T>

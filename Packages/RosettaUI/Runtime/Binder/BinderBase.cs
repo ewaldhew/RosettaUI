@@ -22,7 +22,12 @@ namespace RosettaUI
 
         protected abstract void SetInternal(T t);
 
-        public virtual void SubscribeValueChange(Action<Action<object>, object, object> onValueChange) { }
+        public event Action<object, object> onValueChanged;
+
+        protected void NotifyValueChanged(object prevValue, object currValue)
+        {
+            onValueChanged?.Invoke(prevValue, currValue);
+        }
 
 
         #region IGetter<T>

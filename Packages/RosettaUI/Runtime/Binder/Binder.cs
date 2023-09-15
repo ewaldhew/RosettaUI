@@ -34,19 +34,17 @@ namespace RosettaUI
         {
             var prevValue = getter.Get();
             _setter?.Invoke(t);
-            onValueChanged?.Invoke(prevValue, t);
+            OnValueChanged(prevValue, t);
         }
 
-        public event Action<T, T> onValueChanged;
-
-        public override void SubscribeValueChange(Action<Action<object>, object, object> func)
+        private void OnValueChanged(object prevValue, object currValue)
         {
-            if (_setter.Target is IBinder) return; // ignore nesting binders
-            Action<object> setObject = obj => _setter((T) obj);
-            onValueChanged += (prevVal, currVal) =>
-            {
-                if (!Equals(prevVal, currVal)) func(setObject, prevVal, currVal);
-            };
+            if (prevValue.Equals(currValue)) return;
+
+            // don't send from nesting binders, the innermost binder will do it.
+            if (_setter.Target is IBinder) return;
+
+            NotifyValueChanged(prevValue, currValue);
         }
     }
 }

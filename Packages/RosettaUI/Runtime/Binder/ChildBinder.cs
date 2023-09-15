@@ -30,23 +30,7 @@ namespace RosettaUI
             var prevValue = GetFromParent(parent);
             parent = SetToParent(parent, value);
             parentBinder.Set(parent);
-            onValueChanged?.Invoke(prevValue, value);
-        }
-
-        public event Action<TValue, TValue> onValueChanged;
-
-        public override void SubscribeValueChange(Action<Action<object>, object, object> func)
-        {
-            Action<object> setObject = obj =>
-            {
-                var parent = parentBinder.Get();
-                parent = SetToParent(parent, (TValue) obj);
-                parentBinder.Set(parent);
-            };
-            onValueChanged += (prevVal, currVal) =>
-            {
-                if (!Equals(prevVal, currVal)) func(setObject, prevVal, currVal);
-            };
+            if (!Equals(prevValue, value)) NotifyValueChanged(prevValue, value);
         }
     }
 }

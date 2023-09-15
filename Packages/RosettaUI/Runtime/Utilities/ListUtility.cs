@@ -10,7 +10,7 @@ namespace RosettaUI
     public static class ListUtility
     {
         private static readonly Dictionary<Type, Type> ListItemTypeTable = new();
-        
+
         public static Type GetItemType(Type type)
         {
             if (!ListItemTypeTable.TryGetValue(type, out var itemType))
@@ -24,8 +24,28 @@ namespace RosettaUI
             }
 
             return itemType;
-        } 
-        
+        }
+
+        public static IList CloneList(IList list, Type type, Type itemType)
+        {
+            list ??= (IList) Activator.CreateInstance(type);
+
+            if (list is Array array)
+            {
+                var newArray = Array.CreateInstance(itemType, array.Length);
+                Array.Copy(array, newArray, array.Length);
+                list = newArray;
+            }
+            else
+            {
+                IList listCopy = Activator.CreateInstance(list.GetType(), list.Count) as IList;
+                foreach (var item in list) listCopy?.Add(item);
+                list = listCopy;
+            }
+
+            return list;
+        }
+
         public static IList AddItemAtLast(IList list, Type type, Type itemType)
         {
             list ??= (IList) Activator.CreateInstance(type);

@@ -169,7 +169,7 @@ namespace RosettaUI
             }
 
             UIInternalUtility.SetInteractableWithBinder(ret, listBinder);
-            UIInternalUtility.RegisterHistoryRecorder(ret, listBinder);
+            UIInternalUtility.RegisterHistoryRecorder(listItemContainer.Children.First(), listBinder);
 
             return ret;
         }

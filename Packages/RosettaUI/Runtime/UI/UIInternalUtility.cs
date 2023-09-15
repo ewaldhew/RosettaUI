@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq.Expressions;
 using UnityEngine;
@@ -59,6 +60,50 @@ namespace RosettaUI
             BinderToRecorder[binder] = recorder;
 
             binder.onValueChanged += recorder.GetListener(binder.SetObject);
+
+            if (element is ListViewItemContainerElement listViewElement)
+            {
+                var listRecorder = UIHistory.GetHistoryRecorder<IList>();
+                var list = listViewElement.GetViewBridge().GetIList();
+                var wasRestored = false;
+                Action<IList> restoreList = delegate(IList toState)
+                {
+                    list.Clear();
+                    foreach (var item in toState)
+                        list.Add(item);
+                    wasRestored = true;
+                };
+                IList listLastSeen = ListBinder.CloneList(binder);
+                var listChanged = listRecorder.GetListener(restoreList);
+
+                var pushMemoizedListChangeInternal = new Action<bool>(push =>
+                {
+                    if (listLastSeen.Count == list.Count)
+                        for (int i = 0; i <= list.Count; i++)
+                        {
+                            if (i == list.Count) return;
+                            if (!listLastSeen[i].Equals(list[i])) break;
+                        }
+
+                    if (wasRestored)
+                    {
+                        wasRestored = false;
+                        return;
+                    }
+
+                    if (push) listChanged(listLastSeen, list);
+                    listLastSeen = ListBinder.CloneList(binder);
+                });
+                var pushMemoizedListChange = new Action<IList>(_ => pushMemoizedListChangeInternal(true));
+                var pushMemoizedListChange1 = new Action<object>(_ => pushMemoizedListChangeInternal(true));
+                var pushMemoizedListChange2 = new Action<int, int>((_, _) => pushMemoizedListChangeInternal(true));
+
+                listViewElement.onViewValueChanged += () => pushMemoizedListChangeInternal(false);
+                listViewElement.GetViewBridge().SubscribeListChanged(pushMemoizedListChange);
+                listViewElement.onItemsAdded += pushMemoizedListChange1;
+                listViewElement.onItemsRemoved += pushMemoizedListChange1;
+                listViewElement.onItemIndexChanged += pushMemoizedListChange2;
+            }
         }
     }
 }

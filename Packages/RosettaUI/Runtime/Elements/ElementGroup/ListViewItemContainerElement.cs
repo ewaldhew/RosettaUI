@@ -11,15 +11,15 @@ namespace RosettaUI
     /// ListViewの要素を表示するエレメント
     /// Foldや要素数フィールドのようなヘッダー要素はほかのElementと組み合わせて実現する
     /// UIToolKitのListViewを想定しており表示領域外のElementはできるだけ生成しない
-    /// 
+    ///
     /// リストに変更があった場合の対応がとてもややこしい
-    /// 
+    ///
     /// アプリケーション側で変更があった場合、要素の追加削除やリスト自体の参照先が変わったケースなど
     /// どういった変更があったのかわからない
     /// したがってリストの要素数と参照をチェックしておき変化があったらUIを作り直す
     /// この場合要素ElementのFoldElementのOpen/Closeなどの情報は引き継げない
     /// 逆にUI側での変更はわかるのでできるだけ引き継ぐ
-    /// 
+    ///
     /// Reorderableで要素が移動した場合、Binderレベルでは元のリストのインデックスからとれる値が変わるので何もする必要がないが、
     /// 前述のFoldElementのOpen/CloseのようなUIの状態を引き継げない
     /// これに対応するため各IndexのElementとBinderを保持しておき、Binderの参照Indexを新しいIndexに書き換え、
@@ -30,7 +30,11 @@ namespace RosettaUI
     {
         private readonly IBinder _binder;
         public readonly ListViewOption option;
-        
+
+        public event Action<int, int> onItemIndexChanged;
+        public event Action<IEnumerable<int>> onItemsAdded;
+        public event Action<IEnumerable<int>> onItemsRemoved;
+
         private readonly Func<IBinder, int, Element> _createItemElement;
         private readonly BinderHistory.Snapshot _binderTypeHistorySnapshot;
         private readonly Dictionary<int, IBinder> _itemIndexToBinder = new();
@@ -46,7 +50,7 @@ namespace RosettaUI
             {
                 var prevCount = ListItemCount;
                 if (prevCount == value) return;
-                
+
                 // remove
                 if (prevCount > value)
                 {
@@ -68,7 +72,7 @@ namespace RosettaUI
             this.option = option;
 
             Interactable = !ListBinder.IsReadOnly(listBinder);
-            
+
             _binderTypeHistorySnapshot = BinderHistory.Snapshot.Create();
 
             _lastListItemCount = ListItemCount;
@@ -83,7 +87,7 @@ namespace RosettaUI
                 RemoveItemElementAll();
                 NotifyListChangedToView();
             }
-            
+
             base.UpdateInternal();
         }
 
@@ -103,7 +107,7 @@ namespace RosettaUI
         {
             var element = GetItemElementAt(index);
             if (element != null) return element;
-            
+
             using var applyScope = _binderTypeHistorySnapshot.GetApplyScope();
             var isReadOnly = ListBinder.IsReadOnly(_binder);
 
@@ -122,12 +126,12 @@ namespace RosettaUI
             {
                 state.Apply(element);
             }
-            
+
             AddItemElement(element, index);
 
             return element;
         }
-        
+
         private Element AddPopupMenu(Element element, int index)
         {
             return new PopupMenuElement(
@@ -143,7 +147,7 @@ namespace RosettaUI
             {
                 ListBinder.DuplicateItem(_binder, index);
                 OnItemIndexShiftPlus(index);
-                
+
                 NotifyListChangedToView();
             }
 
@@ -155,7 +159,7 @@ namespace RosettaUI
                 NotifyListChangedToView();
             }
         }
-        
+
         private void AddItemElement(Element element, int index, bool removeState = true)
         {
             RemoveItemElement(index, removeState);
@@ -170,14 +174,14 @@ namespace RosettaUI
 
             RemoveChild(element, false);
         }
-        
+
         private void RemoveItemElementAll()
         {
             foreach (var element in _itemIndexToElement.Values)
             {
                 RemoveChild(element, false);
             }
-            
+
             _itemIndexToElement.Clear();
         }
 
@@ -191,7 +195,7 @@ namespace RosettaUI
             }
         }
 
-        
+
         #region Item Index Changed
 
         private void OnItemIndexShiftPlus(int startIndex, int endIndex = -1)
@@ -203,7 +207,7 @@ namespace RosettaUI
                 MoveElementState(i - 1, i);
                 RemoveItemElement(i, false);
             }
-            
+
             RemoveItemElement(startIndex);
         }
 
@@ -217,7 +221,7 @@ namespace RosettaUI
                 MoveElementState(i + 1, i);
                 RemoveItemElement(i, false);
             }
-            
+
             RemoveItemElement(endIndex);
         }
 
@@ -236,11 +240,13 @@ namespace RosettaUI
 
         private void OnMoveItemIndex(int fromIndex, int toIndex)
         {
+            onItemIndexChanged?.Invoke(fromIndex, toIndex);
+
             if (!_itemIndexToElementState.Remove(fromIndex, out var state))
             {
                 state = CreateElementState(fromIndex);
             }
-            
+
             if ( toIndex < fromIndex )
                 OnItemIndexShiftPlus(toIndex, fromIndex);
             else
@@ -256,16 +262,18 @@ namespace RosettaUI
         private ElementState CreateElementState(int index)
         {
             var element = GetItemElementAt(index);
-            return element == null 
+            return element == null
                 ? null
                 : ElementState.Create(element);
         }
- 
+
         #endregion
 
 
         private void OnItemsAdded(IEnumerable<int> indices)
         {
+            onItemsAdded?.Invoke(indices);
+
             _lastListItemCount = ListItemCount;
 
             using var pool = ListPool<int>.Get(out var indexList);
@@ -277,25 +285,27 @@ namespace RosettaUI
             {
                 return;
             }
-            
+
             // 最後尾ではないけどずらす
             // 現状歯抜け選択には非対応
             if (indexList.Count() == 1)
             {
                 var i = indexList.First();
                 OnItemIndexShiftPlus(i);
-                
+
                 return;
             }
-            
+
             // 最後尾でないかつ複数ならリセット
             RemoveItemElementAll();
         }
-        
+
         private void OnItemsRemoved(IEnumerable<int> indices)
         {
+            onItemsRemoved?.Invoke(indices);
+
             _lastListItemCount = ListItemCount;
-            
+
             using var pool = ListPool<int>.Get(out var indexList);
             indexList.AddRange(indices.Distinct());
 
@@ -310,21 +320,21 @@ namespace RosettaUI
 
                 return;
             }
-            
+
             // 最後尾ではないけど１つだけなら消してずらす
             // 現状歯抜け選択には非対応
             if (indexList.Count() == 1)
             {
                 var i = indexList.First();
                 OnItemIndexShiftMinus(i);
-                
+
                 return;
             }
-            
+
             // 最後尾でないかつ複数ならリセット
             RemoveItemElementAll();
         }
-        
+
         // UI側でListの参照先が変わった(Arrayの要素数変更などすると変わる）
         // UI.List(writeValue, readValue); の readValue を呼んで通知したいので手動で呼ぶ
         private void OnViewListChanged(IList list)
@@ -333,20 +343,20 @@ namespace RosettaUI
             _lastListItemCount = list.Count;
             NotifyViewValueChanged();
         }
-        
+
         protected override ElementViewBridge CreateViewBridge() => new ListViewItemContainerViewBridge(this);
 
         public class ListViewItemContainerViewBridge : ElementViewBridge
         {
             private ListViewItemContainerElement Element => (ListViewItemContainerElement)element;
             private IBinder Binder => Element._binder;
-            
+
             public ListViewItemContainerViewBridge(ListViewItemContainerElement element) : base(element)
             {
             }
-            
+
             public IList GetIList() => ListBinder.GetIList(Binder);
-            
+
             public Element GetOrCreateItemElement(int index) => Element.GetOrCreateItemElement(index);
 
             public void OnItemIndexChanged(int fromIndex, int toIndex) => Element.OnMoveItemIndex(fromIndex, toIndex);
@@ -373,7 +383,7 @@ namespace RosettaUI
         private class ElementState
         {
             private List<bool> _openList;
-            
+
             public static ElementState Create(Element element)
             {
                 return new ElementState()
@@ -386,7 +396,7 @@ namespace RosettaUI
             {
                 using var pool = ListPool<FoldElement>.Get(out var foldList);
                 foldList.AddRange(element.Query<FoldElement>());
-                
+
                 // 数が合わなくてもできるだけ引き継ぐ
                 var count = Mathf.Min(foldList.Count, _openList.Count);
                 for (var i = 0; i < count; ++i)

@@ -10,7 +10,7 @@ namespace RosettaUI
     {
         public static IEnumerable<BinderBase<T>> CreateItemBinders<T>(IList<T> list)
         {
-            // var listBinder = 
+            // var listBinder =
             // return Enumerable.Range(0, list.Count).Select(i => new ListItemBinder<T>(, i));
             return null;
         }
@@ -18,21 +18,21 @@ namespace RosettaUI
         public static Type GetItemBinderType(Type type)
         {
             static bool IsIList(Type type) => type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IList<>);
-            
+
             var listType = IsIList(type)
                 ? type
                 : type.GetInterfaces().FirstOrDefault(IsIList);
             Assert.IsNotNull(listType, $"{type} does not Inherit from IList<>.");
-            
+
             var itemType =  listType.GetGenericArguments()[0];
             return typeof(ListItemBinder<>).MakeGenericType(itemType);
         }
-        
+
         public static IEnumerable<IListItemBinder> CreateItemBinders(IBinder listBinder)
         {
             var itemBinderType = GetItemBinderType(listBinder.ValueType);
             var itemCount = GetCount(listBinder);
-            
+
             return Enumerable.Range(0, itemCount)
                 //.Select(i => Activator.CreateInstance(binderType, listBinder, i) as IBinder);
                 .Select(i => CreateItemBinderAt(listBinder, i, itemBinderType));
@@ -48,7 +48,7 @@ namespace RosettaUI
             => Activator.CreateInstance(itemBinderType, listBinder, index) as IListItemBinder;
 
         public static IList GetIList(IBinder binder) => binder.GetObject() as IList;
-        
+
         public static int GetCount(IBinder binder)
         {
             return GetIList(binder)?.Count ?? 0;
@@ -82,12 +82,23 @@ namespace RosettaUI
         public static bool IsReadOnly(IBinder binder) => binder.IsReadOnly || (GetIList(binder)?.IsReadOnly ?? false);
 
 
+        public static IList CloneList(IBinder binder)
+        {
+            var list = GetIList(binder);
+
+            var listType = binder.ValueType;
+            var itemType = ListUtility.GetItemType(binder.ValueType);
+
+            list = ListUtility.CloneList(list, listType, itemType);
+            return list;
+        }
+
         public static void DuplicateItem(IBinder binder, int index)
         {
             var list = GetIList(binder);
-            
+
             var itemType = ListUtility.GetItemType(binder.ValueType);
-            
+
             list = ListUtility.AddItem(list, itemType, list[index], index + 1);
             binder.SetObject(list);
         }
@@ -95,9 +106,9 @@ namespace RosettaUI
         public static void RemoveItem(IBinder binder, int index)
         {
             var list = GetIList(binder);
-            
+
             var itemType = ListUtility.GetItemType(binder.ValueType);
-            
+
             list = ListUtility.RemoveItem(list, itemType, index);
             binder.SetObject(list);
         }
@@ -105,7 +116,7 @@ namespace RosettaUI
         public static void AddItemAtLast(IBinder binder)
         {
             var list = GetIList(binder);
-            
+
             var listType = binder.ValueType;
             var itemType = ListUtility.GetItemType(binder.ValueType);
 
@@ -116,7 +127,7 @@ namespace RosettaUI
         public static void RemoveItemAtLast(IBinder binder)
         {
             var list = GetIList(binder);
-            
+
             var itemType = ListUtility.GetItemType(binder.ValueType);
             list = ListUtility.RemoveItemAtLast(list, itemType);
             binder.SetObject(list);

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq.Expressions;
 using UnityEngine;
 
@@ -35,11 +36,29 @@ namespace RosettaUI
             element.Interactable = !binder.IsReadOnly;
         }
 
+        private static Dictionary<IBinder, UIHistory.IHistoryListener<object>> BinderToRecorder = new();
+        private static HashSet<IBinder> ExcludedBinders = new();
         public static void RegisterHistoryRecorder(Element element, IBinder binder)
         {
             if (!element.Interactable || binder.IsReadOnly) return;
 
-            binder.SubscribeValueChange(UIHistory.GetHistoryRecorder<object>());
+            // Do not record from parent binders, work on the smallest unit (field/property).
+            if (binder is IPropertyOrFieldBinder pfBinder)
+            {
+                var parentBinder = pfBinder.ParentBinder;
+                if (BinderToRecorder.TryGetValue(parentBinder, out var existingRecorder))
+                {
+                    existingRecorder.Enabled = false;
+                    parentBinder.onValueChanged -= existingRecorder.GetListener(parentBinder.SetObject);
+                }
+                ExcludedBinders.Add(parentBinder);
+            }
+            if (ExcludedBinders.Contains(binder) || BinderToRecorder.ContainsKey(binder)) return;
+
+            var recorder = UIHistory.GetHistoryRecorder<object>();
+            BinderToRecorder[binder] = recorder;
+
+            binder.onValueChanged += recorder.GetListener(binder.SetObject);
         }
     }
 }

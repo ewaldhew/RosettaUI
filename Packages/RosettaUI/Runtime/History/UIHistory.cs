@@ -31,7 +31,7 @@ namespace RosettaUI
         private class HistoryRecorder<T> : IHistoryListener<T>
         {
             private bool _enabled = true;
-            private Dictionary<Action<T>, Action<T, T>> _listenerCache;
+            private Dictionary<Action<T>, Action<T, T>> _listenerCache = new();
 
             public Action<T, T> GetListener(Action<T> setter)
             {
